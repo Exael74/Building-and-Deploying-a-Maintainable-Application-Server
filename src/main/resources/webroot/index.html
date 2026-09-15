@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Server - ECI Framework</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <img class="logo" src="/images/logo.png" alt="Logo">
+            <div class="badge">Taller 15th</div>
+            <h1>Application Server</h1>
+            <p>Construido con Java y Framework Web propio</p>
+        </header>
+
+        <section class="card">
+            <h2>Prueba de Endpoints</h2>
+            <div class="form-group">
+                <input type="text" id="nameInput" placeholder="Ingresa tu nombre..." value="Estudiante ECI">
+                <button onclick="getGreeting()">Probar GET /hello</button>
+            </div>
+            <div class="button-group">
+                <button class="btn-secondary" onclick="getPi()">Probar GET /pi</button>
+            </div>
+            <div class="response-box" id="responseBox">Haz clic en un botón para ejecutar la petición...</div>
+        </section>
+
+        <footer>
+            <p>&copy; 2026 Escuela Colombiana de Ingeniería Julio Garavito</p>
+        </footer>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>
