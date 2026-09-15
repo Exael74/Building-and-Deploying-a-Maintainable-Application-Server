@@ -1,8 +1,11 @@
 # Maintainable Application Server
 
+**Author:** Stiven Esneider Pardo Gutierrez
+**Course:** TDSE
+
 A small Java web framework that lets developers register HTTP GET services through lambda functions, serve static resources, and run as a maintainable, sequential application server — evolved from a hard-coded HTTP server into a reusable framework.
 
-> **Project status:** core framework and sequential HTTP engine are implemented and tested locally (routing, static files, error handling). Environment-variable configuration, graceful shutdown, and cloud deployment are still in progress — sections below are marked accordingly.
+This README documents the project as it stands right now and will be extended as more parts of the assignment are implemented.
 
 ---
 
@@ -87,8 +90,7 @@ Write 404 Not Found
 | Directory in the lobby | `Router` — looks up which office handles the visitor's request |
 | Individual offices | `GetLambda` handlers registered via `get()` — each implements one specific service |
 | Document archive | `StaticFileService` — hands out pre-existing documents (HTML, CSS, JS, images) when no office needs to get involved |
-| Building configuration | Environment variables (`PORT`, and more to come) — port and deployment-specific settings, not printed on the walls (hard-coded) |
-| Closing procedure | Graceful shutdown *(planned)* — the building finishes serving the visitor currently at the desk before locking the doors |
+| Building configuration | Environment variables (`PORT`) — deployment-specific settings, not printed on the walls (hard-coded) |
 
 This works because each part has **one job**: the receptionist doesn't know how to do office work, the directory doesn't answer questions itself, and the archive doesn't care what happens in the offices. Adding a new office (route) never requires retraining the receptionist (touching `HttpServer`).
 
@@ -105,7 +107,6 @@ This works because each part has **one job**: the receptionist doesn't know how 
 | Abstraction | Developers call `get()` / `staticfiles()` without ever touching a `Socket`. |
 | Extensibility | New services are added by registering more lambdas — no new server code. |
 | Testability | `Router`, `Request` parsing, and individual handlers can be tested in isolation from socket I/O. |
-| Operational maintainability | The same source builds and runs identically locally and (once deployed) in the cloud. |
 
 ---
 
@@ -118,32 +119,21 @@ mvn compile
 mvn exec:java
 ```
 
-The server starts on port `8080` by default (see [Environment variables](#5-environment-variables)) and binds to all interfaces.
-
-Stop it with `Ctrl+C` for now — a graceful `/shutdown` route is planned (see status below).
+The server starts on port `8080` by default (see [Environment variables](#5-environment-variables)) and binds to all interfaces. Stop it with `Ctrl+C`.
 
 ---
 
 ## 5. Environment variables
 
-| Variable | Purpose | Local default | Status |
-|---|---|---|---|
-| `PORT` | HTTP server port | `8080` | ✅ Implemented — read in `Application.main` via `System.getenv("PORT")` |
-| `GREETING_PREFIX` | Prefix used by the `/hello` route | `Hello` | ⬜ Planned, not implemented yet |
-| `APP_ENV` | Execution environment (`development` / `production`); will gate the `/shutdown` route | `development` | ⬜ Planned, not implemented yet |
-| `STATIC_FILES_PATH` | Optional override for the static resources root | `webroot` | ⬜ Planned, not implemented yet |
+| Variable | Purpose | Local default |
+|---|---|---|
+| `PORT` | HTTP server port | `8080` |
 
 No credentials or secrets are used or stored in this project.
 
 ---
 
-## 6. Cloud deployment
-
-**Not deployed yet.** This section will be completed with the chosen platform, the public URL, and reproduction steps once the remaining framework work (configuration, static-file hardening, graceful shutdown) is finished.
-
----
-
-## 7. Example URLs (local)
+## 6. Example URLs (local)
 
 | URL | Expected result |
 |---|---|
@@ -159,7 +149,7 @@ No credentials or secrets are used or stored in this project.
 
 ---
 
-## 8. Tests performed
+## 7. Tests performed
 
 Manual verification against the running local server (`mvn exec:java` on port 8080):
 
@@ -169,20 +159,3 @@ Manual verification against the running local server (`mvn exec:java` on port 80
 - `GET /images/logo.png` → `200 OK`, `image/png`, binary content served correctly
 - `GET /unknown` → `404 Not Found`, `text/plain`
 - Malformed request line sent over a raw socket → `400 Bad Request`, server keeps running and accepts the next connection (sequential loop, no crash)
-
-## 9. Evidence (cloud deployment, environment variables, shutdown)
-
-**Pending.** Screenshots and evidence for the deployed page, live REST responses, configured environment variables, and `/shutdown` behavior (available in development, absent in production) will be added once those parts are implemented and deployed.
-
----
-
-## 10. Roadmap
-
-- [x] Project structure and package separation (framework vs. application)
-- [x] Sequential HTTP core (`ServerSocket`, no thread pool)
-- [x] Lambda-based GET routing and query-string parsing
-- [x] Static file serving, including binary resources
-- [x] Basic error handling (404, 400, unhandled route exceptions)
-- [ ] Full environment-variable configuration (`GREETING_PREFIX`, `APP_ENV`, `STATIC_FILES_PATH`)
-- [ ] Graceful, sequential `/shutdown` route (development only)
-- [ ] Cloud deployment and public URL
