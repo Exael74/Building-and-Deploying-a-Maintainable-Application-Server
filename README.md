@@ -141,18 +141,20 @@ No credentials, tokens, or secrets are used or stored anywhere in this project.
 
 ## 6. Example URLs
 
-| URL | Expected result |
+Local (`http://localhost:8080`) and public cloud deployment (`http://184.192.195.113:8080`) both expose the same routes:
+
+| Path | Expected result |
 |---|---|
-| `GET /` | Static `index.html` |
-| `GET /index.html` | Static HTML page |
-| `GET /app.js` | Static JavaScript |
-| `GET /styles.css` | Static CSS |
-| `GET /images/logo.png` | Static binary image (`image/png`) |
-| `GET /hello?name=Pedro` | Dynamic JSON response from a lambda: `{"message": "Hello, Pedro!"}` |
-| `GET /pi` | Dynamic JSON response from a lambda: `{"pi": 3.141592653589793}` |
-| `GET /api/status` | Dynamic JSON status response, includes current `APP_ENV` |
-| `GET /shutdown` | Development only: stops the server gracefully after responding |
-| `GET /unknown` | `404 Not Found` |
+| `/` | Static `index.html` |
+| `/index.html` | Static HTML page |
+| `/app.js` | Static JavaScript |
+| `/styles.css` | Static CSS |
+| `/images/logo.png` | Static binary image (`image/png`) |
+| `/hello?name=Pedro` | Dynamic JSON response from a lambda: `{"message": "Hello, Pedro!"}` |
+| `/pi` | Dynamic JSON response from a lambda: `{"pi": 3.141592653589793}` |
+| `/api/status` | Dynamic JSON status response, includes current `APP_ENV` |
+| `/shutdown` | Development only: stops the server gracefully after responding (`404` in production — see [Cloud deployment](#8-cloud-deployment)) |
+| `/unknown` | `404 Not Found` |
 
 Local evidence:
 
@@ -227,7 +229,67 @@ $ curl http://localhost:8080/hello?name=World
 
 ## 8. Cloud deployment
 
-*(completed in a later update — see commit history for the deployment steps and the public URL)*
+**Platform:** AWS (EC2, AWS Academy Learner Lab), region `us-east-1`.
+
+**Public URL:** http://184.192.195.113:8080/
+
+> AWS Academy Learner Lab sessions are time-boxed and the instance stops when the lab session ends, so this URL is only guaranteed to respond while the lab is active.
+
+### How it was deployed
+
+1. Built a runnable jar locally: `mvn clean package` → `target/taller-15th-1.0-SNAPSHOT.jar`.
+2. Created a security group (`tdse-app-sg`) allowing inbound TCP `22` (SSH, for deployment) and `8080` (the app) from `0.0.0.0/0`.
+3. Launched a `t3.micro` EC2 instance (Amazon Linux 2023, default VPC/subnet) with a dedicated key pair.
+4. Copied the jar to the instance (`scp`) and installed `java-17-amazon-corretto-headless`.
+5. Registered it as a systemd service (`tdse-app.service`) so it survives reboots/crashes, with the deployment configuration set as environment variables on the service itself — **not** in the source code:
+
+   ```ini
+   [Service]
+   Environment=PORT=8080
+   Environment=GREETING_PREFIX=Hello
+   Environment=APP_ENV=production
+   ExecStart=/usr/bin/java -jar /home/ec2-user/app.jar
+   ```
+
+6. Verified the app from outside the instance (`curl` from CloudShell, then a real browser) and confirmed `/shutdown` is not reachable with `APP_ENV=production`.
+
+### Reproducing this deployment
+
+```bash
+# 1. Build
+mvn clean package
+
+# 2. On any Linux host with Java 17+:
+scp target/taller-15th-1.0-SNAPSHOT.jar user@host:/path/app.jar
+ssh user@host
+sudo PORT=8080 APP_ENV=production GREETING_PREFIX=Hello \
+     java -jar /path/app.jar
+# (or wrap it in a systemd unit as shown above for persistence)
+```
+
+### Cloud evidence
+
+**Deployed page and REST endpoints (public IP):**
+
+| Static page | `fetch()` call to `/hello` |
+|---|---|
+| ![cloud index](docs/screenshots/cloud-index.jpg) | ![cloud hello](docs/screenshots/cloud-hello-fetch.jpg) |
+
+| `GET /pi` | `GET /shutdown` in production → `404` |
+|---|---|
+| ![cloud pi](docs/screenshots/cloud-pi.jpg) | ![cloud shutdown 404](docs/screenshots/cloud-shutdown-404.jpg) |
+
+**Configured environment variables on the instance (no secrets):**
+
+![env vars](docs/screenshots/cloud-env-vars.jpg)
+
+**AWS console — running EC2 instance:**
+
+![EC2 instance](docs/screenshots/aws-ec2-instance.jpg)
+
+**AWS console — security group (ports 22 and 8080 only):**
+
+![security group](docs/screenshots/aws-security-group.jpg)
 
 ---
 
@@ -244,3 +306,10 @@ Manual verification against the local server (`java -jar target/taller-15th-1.0-
 - Malformed request line sent over a raw socket → `400 Bad Request`, server keeps running and accepts the next connection (sequential loop, no crash)
 - `GET /shutdown` in development → `200 OK`, server stops gracefully, subsequent requests are refused
 - `GET /shutdown` in production → `404 Not Found`, route is never registered
+
+Same checks repeated against the public AWS deployment (`http://184.192.195.113:8080`, `APP_ENV=production`):
+
+- `GET /hello?name=Pedro` → `200 OK`, `{"message": "Hello, Pedro!"}`
+- `GET /pi` → `200 OK`, `{"pi": 3.141592653589793}`
+- `GET /images/logo.png` → `200 OK`
+- `GET /shutdown` → `404 Not Found` (confirmed not reachable in production)
