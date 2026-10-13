@@ -42,6 +42,7 @@ public class HttpServer {
                     System.err.println("Error accepting connection: " + e.getMessage());
                 }
             }
+            System.out.println("Server stopped gracefully.");
         } catch (IOException e) {
             System.err.println("Could not start server on port " + port + ": " + e.getMessage());
         } finally {

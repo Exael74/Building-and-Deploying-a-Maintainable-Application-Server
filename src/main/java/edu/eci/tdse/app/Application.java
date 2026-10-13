@@ -4,20 +4,23 @@ import edu.eci.tdse.webframework.WebFramework;
 
 public class Application {
     public static void main(String[] args) {
-        // 1. Leer puerto de variable de entorno o usar 8080 por defecto
+        // Externalized, deployment-specific configuration (never hard-coded)
         String portEnv = System.getenv("PORT");
         int port = (portEnv != null && !portEnv.isBlank()) ? Integer.parseInt(portEnv) : 8080;
 
-        // 2. Configurar ubicación de archivos estáticos
-        WebFramework.staticfiles("webroot");
+        String staticFilesPath = System.getenv().getOrDefault("STATIC_FILES_PATH", "webroot");
+        String greetingPrefix = System.getenv().getOrDefault("GREETING_PREFIX", "Hello");
+        String appEnv = System.getenv().getOrDefault("APP_ENV", "development");
 
-        // 3. Registrar endpoints usando las firmas exactas pedidas: (req, resp) -> String
+        WebFramework.staticfiles(staticFilesPath);
+
+        // Signatures follow exactly the (req, resp) -> String contract requested in the lab
         WebFramework.get("/hello", (req, resp) -> {
             String name = req.getValue("name");
             if (name == null || name.isBlank()) {
                 name = "World";
             }
-            return "{\"message\": \"Hello, " + name + "!\"}";
+            return "{\"message\": \"" + greetingPrefix + ", " + name + "!\"}";
         });
 
         WebFramework.get("/pi", (req, resp) -> {
@@ -25,10 +28,18 @@ public class Application {
         });
 
         WebFramework.get("/api/status", (req, resp) -> {
-            return "{\"status\": \"UP\", \"framework\": \"Sequential Custom HttpServer\"}";
+            return "{\"status\": \"UP\", \"framework\": \"Sequential Custom HttpServer\", \"env\": \""
+                    + appEnv + "\"}";
         });
 
-        // 4. Iniciar servidor web
+        // Graceful shutdown: only reachable in development, never in production
+        if ("development".equals(appEnv)) {
+            WebFramework.get("/shutdown", (req, resp) -> {
+                WebFramework.stop();
+                return "{\"message\": \"Server will stop after this response.\"}";
+            });
+        }
+
         WebFramework.start(port);
     }
 }
